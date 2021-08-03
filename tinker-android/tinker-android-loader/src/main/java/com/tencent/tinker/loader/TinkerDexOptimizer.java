@@ -198,7 +198,10 @@ public final class TinkerDexOptimizer {
                 SystemClock.sleep(1000);
                 if (!performDexOptSecondarySuccess || !oatFile.exists()) {
                     if ("huawei".equalsIgnoreCase(Build.MANUFACTURER) || "honor".equalsIgnoreCase(Build.MANUFACTURER)) {
-                        registerDexModule(context, dexPath, oatPath);
+                        // android 10 华为崩溃
+                        if (Build.VERSION.SDK_INT != 29) {
+                            registerDexModule(context, dexPath, oatPath);
+                        }
                     }
                 }
                 if (oatFile.exists()) {

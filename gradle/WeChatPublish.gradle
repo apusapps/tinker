@@ -78,7 +78,7 @@ class WeChatPublishExtension {
             if (!project.plugins.hasPlugin('signing')) {
                 project.plugins.apply('signing')
             }
-            emitSigningConfig(project)
+//            emitSigningConfig(project)
         }
 
         emitRepositoryDSL(project)
