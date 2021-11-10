@@ -48,7 +48,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -197,20 +196,18 @@ public final class TinkerDexOptimizer {
 
         try {
             final File oatFile = new File(oatPath);
-            final File oatFinishedMarkerFile = getOatFinishedMarkerFile(dexPath);
-            if (!oatFile.exists()) {
-                if (oatFinishedMarkerFile.exists()) {
-                    // oat file does not exist, remove corresponding marker file.
-                    oatFinishedMarkerFile.delete();
-                }
+            if (oatFile.exists() && oatFile.length() > 4) {
+                ShareTinkerLog.i(TAG, "[+] Odex file exists, skip bg-dexopt triggering.");
+                return;
             } else {
-                if (!oatFinishedMarkerFile.exists()) {
-                    // Although oat file exists, but marker file is not found. Remove the oat file
-                    // and trigger dex2oat again.
-                    oatFile.delete();
-                } else {
-                    ShareTinkerLog.i(TAG, "[+] Oat file %s should be valid, skip triggering dexopt.", oatPath);
-                    return;
+                try {
+                    final File oatDir = oatFile.getParentFile();
+                    if (!oatDir.exists()) {
+                        oatDir.mkdirs();
+                    }
+                    oatFile.createNewFile();
+                } catch (Throwable thr) {
+                    ShareTinkerLog.printErrStackTrace(TAG, thr, "[-] Fail to pre-create oat file.");
                 }
             }
             int waitTimes = 0;
@@ -221,46 +218,22 @@ public final class TinkerDexOptimizer {
                     ShareTinkerLog.printErrStackTrace(TAG, thr, "[-] Fail to call reconcileSecondaryDexFiles.");
                 }
                 try {
-                    final File oatDir = oatFile.getParentFile();
-                    if (!oatDir.exists()) {
-                        oatDir.mkdirs();
-                    }
-                    oatFile.createNewFile();
+                    registerDexModule(context, dexPath);
                 } catch (Throwable thr) {
-                    ShareTinkerLog.printErrStackTrace(TAG, thr, "[-] Fail to pre-create oat file.");
+                    ShareTinkerLog.printErrStackTrace(TAG, thr, "[-] Fail to call registerDexModule.");
                 }
-                if (ShareTinkerInternals.isNewerOrEqualThanVersion(31 /* Android S */, true)) {
-                    // registerDexModule will force classloader context change into VariableClassLoaderContext,
-                    // which makes ART skip caching class verification info on Android Q and R. The running
-                    // performance of patched app will have no improvement.
-                    try {
-                        registerDexModule(context, dexPath);
-                    } catch (Throwable thr) {
-                        ShareTinkerLog.printErrStackTrace(TAG, thr, "[-] Fail to call registerDexModule.");
-                    }
-                    if (checkAndMarkIfOatExists(oatFile, oatFinishedMarkerFile, "registerDexModule")) {
-                        return;
-                    }
+                if (oatFile.exists()) {
+                    ShareTinkerLog.i(TAG, "[+] Dexopt was triggered by registerDexModule successfully.");
+                    return;
                 }
                 try {
                     performDexOptSecondary(context);
                 } catch (Throwable thr) {
                     ShareTinkerLog.printErrStackTrace(TAG, thr, "[-] Fail to call performDexOptSecondary.");
                 }
-                if (checkAndMarkIfOatExists(oatFile, oatFinishedMarkerFile, "performDexOptSecondary")) {
+                if (oatFile.exists()) {
+                    ShareTinkerLog.i(TAG, "[+] Dexopt was triggered by performDexOptSecondary successfully.");
                     return;
-                }
-                if ("huawei".equalsIgnoreCase(Build.MANUFACTURER) || "honor".equalsIgnoreCase(Build.MANUFACTURER)) {
-                    // Some HW devices still need to call registerDexModule to generate odex for patched
-                    // dex.
-                    try {
-                        registerDexModule(context, dexPath);
-                    } catch (Throwable thr) {
-                        ShareTinkerLog.printErrStackTrace(TAG, thr, "[-] Fail to call registerDexModule.");
-                    }
-                    if (checkAndMarkIfOatExists(oatFile, oatFinishedMarkerFile, "registerDexModule for hw dev")) {
-                        return;
-                    }
                 }
                 if (waitTimes >= 3) {
                     throw new IllegalStateException("Dexopt was triggered, but no odex file was generated.");
@@ -272,26 +245,6 @@ public final class TinkerDexOptimizer {
             }
         } catch (Throwable thr) {
             ShareTinkerLog.printErrStackTrace(TAG, thr, "[-] Fail to call triggerPMDexOptAsyncOnDemand.");
-        }
-    }
-
-    private static File getOatFinishedMarkerFile(String dexPath) {
-        return new File(dexPath + ".oat_fine");
-    }
-
-    private static boolean checkAndMarkIfOatExists(File oatFile, File markerFile, String stageForLog) {
-        if (oatFile.exists()) {
-            ShareTinkerLog.i(TAG, "[+] Oat file %s is found after %s", oatFile.getPath(), stageForLog);
-            try {
-                markerFile.createNewFile();
-            } catch (Throwable thr) {
-                ShareTinkerLog.printErrStackTrace(TAG, thr,
-                        "[-] Fail to create marker file %s after %s.", markerFile.getPath(), stageForLog);
-            }
-            return true;
-        } else {
-            ShareTinkerLog.e(TAG, "[-] Oat file %s does not exist after %s.", oatFile.getPath(), stageForLog);
-            return false;
         }
     }
 
@@ -332,8 +285,7 @@ public final class TinkerDexOptimizer {
                 "compile",
                 "-f",
                 "--secondary-dex",
-                "-m", ShareTinkerInternals.isNewerOrEqualThanVersion(31 /* Android S */, true)
-                        ? "verify" : "speed-profile",
+                "-m", "speed-profile",
                 context.getPackageName()
         };
         executePMSShellCommand(context, args);
@@ -428,7 +380,7 @@ public final class TinkerDexOptimizer {
         Parcel reply = null;
         long lastIdentity = Binder.clearCallingIdentity();
         try {
-            ShareTinkerLog.i(TAG, "[+] Execute shell cmd, args: %s", Arrays.toString(args));
+            ShareTinkerLog.i(TAG, "[+] Start trigger secondary dexopt.");
             data = Parcel.obtain();
             reply = Parcel.obtain();
             data.writeFileDescriptor(FileDescriptor.in);
@@ -439,9 +391,9 @@ public final class TinkerDexOptimizer {
             sEmptyResultReceiver.writeToParcel(data, 0);
             pmsBinderProxy.transact(SHELL_COMMAND_TRANSACTION, data, reply, 0);
             reply.readException();
-            ShareTinkerLog.i(TAG, "[+] Execute shell cmd done.");
+            ShareTinkerLog.i(TAG, "[+] Secondary dexopt done.");
         } catch (Throwable thr) {
-            throw new IllegalStateException("Failure on executing shell cmd.", thr);
+            throw new IllegalStateException("Failure on triggering secondary dexopt", thr);
         } finally {
             if (reply != null) {
                 reply.recycle();
