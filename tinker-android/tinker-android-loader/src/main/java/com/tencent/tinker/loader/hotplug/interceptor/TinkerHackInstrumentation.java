@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.os.PersistableBundle;
 
+import android.util.Log;
 import com.tencent.tinker.loader.TinkerRuntimeException;
 import com.tencent.tinker.loader.hotplug.EnvConsts;
 import com.tencent.tinker.loader.hotplug.IncrementComponentManager;
@@ -101,7 +102,8 @@ public class TinkerHackInstrumentation extends Instrumentation {
                 fixActivityParams(activity, targetAInfo);
             }
         }
-        super.callActivityOnCreate(activity, icicle, persistentState);
+        Log.i(TAG, "callActivityOnCreate with empty bundle");
+        super.callActivityOnCreate(activity, new Bundle(), persistentState);
     }
 
     @Override
