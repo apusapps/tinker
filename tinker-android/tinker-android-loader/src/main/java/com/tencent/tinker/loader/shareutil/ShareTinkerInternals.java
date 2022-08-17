@@ -556,7 +556,23 @@ public class ShareTinkerInternals {
                 return result;
             }
         }
+        //因为隐私合规问题，该方法提前。(更改了tinker源码)
+        final byte[] buf = new byte[2048];
+        InputStream in = null;
+        try {
+            in = new BufferedInputStream(new FileInputStream("/proc/self/cmdline"));
+            int len = in.read(buf);
+            while (len > 0 && (buf[len - 1] <= 0 || buf[len - 1] == 10 || buf[len - 1] == 13)) --len;
+            if (len > 0) {
+                return new String(buf, StandardCharsets.US_ASCII);
+            }
+        } catch (Throwable thr) {
+            ShareTinkerLog.e(TAG, "getProcessNameInternal parse cmdline exception:" + thr.getMessage());
+        } finally {
+            SharePatchFileUtil.closeQuietly(in);
+        }
 
+        //该方式原本在读cmdline前面
         if (context != null) {
             try {
                 final int myPid = android.os.Process.myPid();
@@ -575,21 +591,6 @@ public class ShareTinkerInternals {
             } catch (Throwable ignored) {
                 // Ignored.
             }
-        }
-
-        final byte[] buf = new byte[2048];
-        InputStream in = null;
-        try {
-            in = new BufferedInputStream(new FileInputStream("/proc/self/cmdline"));
-            int len = in.read(buf);
-            while (len > 0 && (buf[len - 1] <= 0 || buf[len - 1] == 10 || buf[len - 1] == 13)) --len;
-            if (len > 0) {
-                return new String(buf, StandardCharsets.US_ASCII);
-            }
-        } catch (Throwable thr) {
-            ShareTinkerLog.e(TAG, "getProcessNameInternal parse cmdline exception:" + thr.getMessage());
-        } finally {
-            SharePatchFileUtil.closeQuietly(in);
         }
 
         return null;
