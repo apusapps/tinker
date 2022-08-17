@@ -491,6 +491,21 @@ public class ShareTinkerInternals {
             }
         }
 
+        final byte[] buf = new byte[2048];
+        InputStream in = null;
+        try {
+            in = new BufferedInputStream(new FileInputStream("/proc/self/cmdline"));
+            int len = in.read(buf);
+            while (len > 0 && (buf[len - 1] <= 0 || buf[len - 1] == 10 || buf[len - 1] == 13)) --len;
+            if (len > 0) {
+                return new String(buf, StandardCharsets.US_ASCII);
+            }
+        } catch (Throwable thr) {
+            ShareTinkerLog.e(TAG, "getProcessNameInternal parse cmdline exception:" + thr.getMessage());
+        } finally {
+            SharePatchFileUtil.closeQuietly(in);
+        }
+
         if (context != null) {
             try {
                 final int myPid = android.os.Process.myPid();
@@ -511,20 +526,7 @@ public class ShareTinkerInternals {
             }
         }
 
-        final byte[] buf = new byte[2048];
-        InputStream in = null;
-        try {
-            in = new BufferedInputStream(new FileInputStream("/proc/self/cmdline"));
-            int len = in.read(buf);
-            while (len > 0 && (buf[len - 1] <= 0 || buf[len - 1] == 10 || buf[len - 1] == 13)) --len;
-            if (len > 0) {
-                return new String(buf, StandardCharsets.US_ASCII);
-            }
-        } catch (Throwable thr) {
-            ShareTinkerLog.e(TAG, "getProcessNameInternal parse cmdline exception:" + thr.getMessage());
-        } finally {
-            SharePatchFileUtil.closeQuietly(in);
-        }
+
 
         return null;
     }
