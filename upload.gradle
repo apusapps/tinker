@@ -1,0 +1,27 @@
+apply plugin: 'maven'
+
+def getReleaseRepositoryUrl() {
+    if (project.version.contains("SNAPSHOT")) {
+        return SNAPSHOT_REPOSITORY_URL
+    } else {
+        return RELEASE_REPOSITORY_URL
+    }
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            repository(url: getReleaseRepositoryUrl()) {
+                authentication(userName: MAVEN_USERNAME, password: MAVEN_PASSWORD)
+            }
+//            if (project.hasProperty('dryRun') && dryRun == "false") {
+//                println "dryRun = $dryRun"
+//                repository(url: getReleaseRepositoryUrl()) {
+//                    authentication(userName: MAVEN_USERNAME, password: MAVEN_PASSWORD)
+//                }
+//            } else {
+//                repository(url: uri(rootProject.file('build/repo')))
+//            }
+        }
+    }
+}

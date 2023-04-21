@@ -47,4 +47,5 @@ task buildTinkerSdk(type: Copy, dependsOn: [build]) {
     }
 }
 
-apply from: rootProject.file('gradle/PublishArtifact.gradle')
+//apply from: rootProject.file('gradle/PublishArtifact.gradle')
+apply from: rootProject.file('upload.gradle')
