@@ -1,10 +1,11 @@
 apply plugin: 'com.android.library'
 
 android {
+    namespace "get.android.jar"
     compileSdkVersion rootProject.ext.compileSdkVersion
 }
 
-def sdkPath = android.sdkComponents.getSdkDirectory().get().asFile.absolutePath
+def sdkPath = android.sdkDirectory.absolutePath
 def androidJarPath = new File(sdkPath, "platforms/${android.compileSdkVersion}/android.jar")
 
 if (!androidJarPath.exists()) {

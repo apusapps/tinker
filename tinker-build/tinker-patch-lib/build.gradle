@@ -32,5 +32,8 @@ sourceSets {
     }
 }
 
-//apply from: rootProject.file('gradle/PublishArtifact.gradle')
-apply from: rootProject.file('upload.gradle')
+project.tasks.named("processResources", Copy.class) {
+    duplicatesStrategy DuplicatesStrategy.INCLUDE
+}
+
+apply from: rootProject.file('gradle/PublishArtifact.gradle')

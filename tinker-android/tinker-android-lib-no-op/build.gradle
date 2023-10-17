@@ -4,6 +4,8 @@ version rootProject.ext.VERSION_NAME
 group rootProject.ext.GROUP
 
 android {
+    namespace "com.tencent.tinker.lib"
+
     compileSdkVersion rootProject.ext.compileSdkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
 
@@ -48,8 +50,7 @@ task buildTinkerSdk(type: Copy, dependsOn: [build]) {
     }
 }
 
-//apply from: rootProject.file('gradle/PublishArtifact.gradle')
-apply from: rootProject.file('upload.gradle')
+apply from: rootProject.file('gradle/PublishArtifact.gradle')
 
 
 

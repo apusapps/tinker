@@ -7,7 +7,28 @@ def checkAndGetOption(name) {
     return project[name]
 }
 
+def releasesRepoUrl = RELEASE_REPOSITORY_URL
+def snapshotsRepoUrl = SNAPSHOT_REPOSITORY_URL
+def publishUrl = project.version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+def publishUserName = NEXUS_USERNAME
+def publishPassword = NEXUS_PASSWORD
+
+println "-------publish info---------"
+println "url: $publishUrl"
+println "username: $publishUserName"
+println "password: $publishPassword"
+
+
 wechatPublish {
+
+    publishToMaven {
+        url = publishUrl
+        credentials {
+            username = publishUserName
+            password = publishPassword
+        }
+    }
+
     pom {
         name = checkAndGetOption('POM_NAME')
         description = checkAndGetOption('POM_DESCRIPTION')
